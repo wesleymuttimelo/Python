@@ -1,0 +1,155 @@
+openapi: 3.1.0
+info:
+  title: Movie Consultation API
+  version: 0.1.0
+  description: >
+    API didática em FastAPI para busca e detalhe de filmes,
+    integrando com a OMDb API.
+servers:
+  - url: http://localhost:8000
+    description: Desenvolvimento local
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags: [system]
+      responses:
+        "200":
+          description: API operacional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /movies/search:
+    get:
+      summary: Buscar filmes por título
+      operationId: searchMovies
+      tags: [movies]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Termo de busca (título)
+          schema:
+            type: string
+            minLength: 1
+            examples: ["matrix"]
+      responses:
+        "200":
+          description: Lista de resultados (pode ser vazia)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [query, results]
+                properties:
+                  query:
+                    type: string
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MovieSummary"
+        "422":
+          description: Parâmetro q inválido ou ausente
+        "502":
+          description: Falha de comunicação com a OMDb
+        "503":
+          description: Configuração/provedor indisponível
+  /movies/{imdb_id}:
+    get:
+      summary: Detalhes de um filme
+      operationId: getMovieByImdbId
+      tags: [movies]
+      parameters:
+        - name: imdb_id
+          in: path
+          required: true
+          description: ID IMDb (tt + dígitos)
+          schema:
+            type: string
+            pattern: "^tt\\d+$"
+            examples: ["tt0133093"]
+      responses:
+        "200":
+          description: Detalhes do filme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieDetail"
+        "404":
+          description: Filme não encontrado
+        "422":
+          description: imdb_id inválido
+        "502":
+          description: Falha de comunicação com a OMDb
+        "503":
+          description: Configuração/provedor indisponível
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    MovieSummary:
+      type: object
+      required: [title, year, imdb_id, type]
+      properties:
+        title:
+          type: string
+        year:
+          type: string
+        imdb_id:
+          type: string
+        type:
+          type: string
+        poster_url:
+          type: string
+          nullable: true
+    MovieDetail:
+      allOf:
+        - $ref: "#/components/schemas/MovieSummary"
+        - type: object
+          properties:
+            rated:
+              type: string
+              nullable: true
+            released:
+              type: string
+              nullable: true
+            runtime:
+              type: string
+              nullable: true
+            genre:
+              type: string
+              nullable: true
+            director:
+              type: string
+              nullable: true
+            writers:
+              type: string
+              nullable: true
+            actors:
+              type: string
+              nullable: true
+            plot:
+              type: string
+              nullable: true
+            language:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
+            awards:
+              type: string
+              nullable: true
+            imdb_rating:
+              type: string
+              nullable: true
+            imdb_votes:
+              type: string
+              nullable: true

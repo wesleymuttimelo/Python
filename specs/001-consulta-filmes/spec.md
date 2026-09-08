@@ -1,6 +1,6 @@
 # Spec 001 — API de Consulta de Filmes
 
-**Status:** aprovada para planejamento  
+**Status:** implementada  
 **Objetivo de estudo:** Python + FastAPI + integração HTTP com API externa  
 **Provedor externo:** [OMDb API](https://www.omdbapi.com/) (Open Movie Database)
 
@@ -106,9 +106,9 @@ nossa FastAPI; nossa FastAPI fala com a OMDb.
 
 ## Critérios de pronto da feature
 
-- [ ] Spec, plan, tasks e contrato revisados
-- [ ] App FastAPI sobe com `uvicorn`
-- [ ] Endpoints US-01..US-03 implementados
-- [ ] Testes passando com mocks
-- [ ] README explica chave OMDb e como rodar
-- [ ] `.env.example` presente; `.env` no `.gitignore`
+- [x] Spec, plan, tasks e contrato revisados
+- [x] App FastAPI sobe com `uvicorn`
+- [x] Endpoints US-01..US-03 implementados
+- [x] Testes passando com mocks
+- [x] README explica chave OMDb e como rodar
+- [x] `.env.example` presente; `.env` no `.gitignore`

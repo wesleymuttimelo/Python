@@ -8,8 +8,8 @@ a especificação vem antes do código.
 
 ## Estado atual
 
-A **spec e o plano de execução** já estão prontos.
-A implementação FastAPI deve seguir `plan.md` e `specs/001-consulta-filmes/tasks.md`.
+A **spec 001** está **implementada**. A API FastAPI cobre health, busca e
+detalhe de filmes, com testes mockados da OMDb.
 
 ## Documentação SDD
 

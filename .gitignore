@@ -7,6 +7,9 @@ env/
 .env
 .env.local
 
+# Banco local do Cardápio Pix (tem dados de clientes)
+data/
+
 # Python
 __pycache__/
 *.py[cod]

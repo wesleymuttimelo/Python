@@ -10,6 +10,7 @@ Antes de escrever código, leia e siga este fluxo.
 3. `plan.md` — como executar a spec
 4. `specs/001-consulta-filmes/tasks.md` — checklist de implementação
 5. `README.md` — setup local e chave OMDb
+6. `specs/002-cardapio-pix/spec.md` — produto separado (Cardápio Pix); não misture com a API de filmes
 
 ## Fluxo de trabalho
 

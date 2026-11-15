@@ -8,6 +8,10 @@ Qualquer spec, plan ou implementação deve respeitar estes princípios.
 Este repositório existe para **estudo de Python com FastAPI**.
 O código deve ser legível, didático e incremental — não um produto de produção complexo.
 
+A spec 002 (Cardápio Pix) é um aplicativo separado, no pacote `cardapio/`.
+Ela não altera a API de filmes. O banco SQLite local e o token de operador
+existem só nesse aplicativo.
+
 ## Princípios
 
 ### I. Spec primeiro
@@ -54,4 +58,5 @@ Testes cobrem o comportamento da nossa API, não a disponibilidade da OMDb.
 
 ## Escopo fora da constituição
 
-Autenticação de usuários, banco de dados persistente, cache distribuído e deploy em cloud **não** fazem parte do escopo inicial, salvo nova spec aprovada.
+Autenticação de usuários, banco de dados persistente, cache distribuído e deploy em cloud **não** fazem parte do escopo da API de filmes, salvo nova spec aprovada.
+A spec 002 autoriza SQLite e um token único de operador apenas no Cardápio Pix.

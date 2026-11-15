@@ -5,3 +5,4 @@ pydantic-settings>=2.15.0
 python-dotenv>=1.2.0
 pytest>=9.0.0
 pytest-asyncio>=1.0.0
+segno>=1.6.1

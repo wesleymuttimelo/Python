@@ -19,7 +19,8 @@ specs/
 
 | ID | Nome | Status |
 |----|------|--------|
-| 001 | Consulta de filmes (OMDb + FastAPI) | Especificada — pronta para execução via `plan.md` |
+| 001 | Consulta de filmes (OMDb + FastAPI) | Implementada |
+| 002 | Cardápio Pix (renda extra) | Implementada |
 
 ## Como criar uma nova spec
 

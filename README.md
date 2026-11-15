@@ -93,6 +93,19 @@ Veja `.env.example`:
 4. Ir marcando `tasks.md`
 5. Validar com o checklist de requirements
 
+## Cardápio Pix (renda extra)
+
+Aplicativo separado da API de filmes. Cardápio digital para lanchonete, marmita,
+açaí e confeitaria: o pedido chega no WhatsApp e a mensalidade é um Pix, sem
+taxa de gateway.
+
+```bash
+uvicorn cardapio.main:app --reload --port 8001
+```
+
+Abra http://127.0.0.1:8001 e leia `cardapio/README.md`.
+
 ## Licença / propósito
 
-Material de estudo pessoal — não é um produto comercial.
+A API de filmes é material de estudo. O Cardápio Pix é um produto pequeno e
+separado, descrito na spec 002.

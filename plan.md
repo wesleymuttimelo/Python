@@ -1,5 +1,8 @@
 # Plan de Execução — Spec 001 (API de Consulta de Filmes)
 
+A spec 002 tem o próprio plano em `specs/002-cardapio-pix/tasks.md`.
+Este arquivo continua sendo só o plano da API de filmes.
+
 Este plano transforma a spec `specs/001-consulta-filmes/spec.md` em implementação.
 Siga a ordem das fases. Não pule a fase de setup de chave OMDb.
 

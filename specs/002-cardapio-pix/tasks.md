@@ -6,3 +6,5 @@
 - [x] Páginas públicas, painel do operador e QR para impressão
 - [x] Testes de domínio, serviço e HTTP
 - [x] README do produto e variáveis de ambiente
+- [x] Cadastro pelo anúncio cria o teste sozinho e guarda a origem
+- [x] Página Divulgar com textos e links por canal

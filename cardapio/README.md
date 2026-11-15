@@ -50,6 +50,26 @@ se a pessoa pedir.
 5. Confira o Pix na sua conta e só então aperte **Confirmar Pix de 30 dias**.
 6. Quem não paga fica com o cardápio pausado, sem você tirar nada do ar na mão.
 
+## Vender pelo anúncio
+
+O anúncio não dispara mensagem para quem não pediu. A pessoa clica, cai na
+página e o cardápio de teste abre sozinho. O editor privado fica em `/loja/...`.
+O link público, esse sim, pode ir para o QR do balcão.
+
+No painel, abra **Divulgar**. Lá estão os textos e os links prontos:
+
+- `/?utm_source=instagram` para Instagram e Facebook
+- `/?utm_source=google` para anúncio de pesquisa
+- `/?utm_source=whatsapp` para status e grupos da sua cidade
+- `/?utm_source=panfleto` para o QR impresso
+
+Use o endereço público de verdade em `CARDAPIO_PUBLIC_BASE_URL`. `localhost` não
+serve para anúncio.
+
+Um teste honesto é cerca de R$ 15 por dia, por uma semana, só na sua cidade.
+Se o cadastro custar mais que a mensalidade, pause o anúncio e volte para o
+panfleto. Não compre lista de telefone.
+
 ## Publicar
 
 Qualquer máquina com Python 3.11+ serve. Aponte `CARDAPIO_PUBLIC_BASE_URL` para

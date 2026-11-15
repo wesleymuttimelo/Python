@@ -42,6 +42,8 @@ class Restaurant:
     monthly_price_cents: int
     is_demo: bool
     created_on: date
+    source: str = "direto"
+    manage_token: str | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,7 @@ class Lead:
     business_name: str
     city: str
     created_at: str
+    source: str = "direto"
 
 
 def slugify(value: str) -> str:
@@ -104,6 +107,71 @@ def slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
     slug = re.sub(r"-{2,}", "-", slug)[:40].strip("-")
     return validate_slug(slug)
+
+
+def normalize_source(raw: str | None) -> str:
+    if not raw:
+        return "direto"
+    text = re.sub(r"[^a-z0-9_-]", "", raw.strip().lower())[:40].strip("-_")
+    return text or "direto"
+
+
+def campaign_url(base_url: str, source: str) -> str:
+    return f"{base_url.rstrip('/')}/?utm_source={normalize_source(source)}"
+
+
+def ad_copies(price_label: str, base_url: str) -> tuple[tuple[str, str, str], ...]:
+    instagram = campaign_url(base_url, "instagram")
+    google = campaign_url(base_url, "google")
+    whatsapp = campaign_url(base_url, "whatsapp")
+    panfleto = campaign_url(base_url, "panfleto")
+    return (
+        (
+            "instagram",
+            "Instagram e Facebook",
+            "\n".join(
+                [
+                    "Cardápio no celular para marmita, lanche e açaí.",
+                    "O cliente pede e a mensagem chega no seu WhatsApp.",
+                    f"14 dias grátis. Depois {price_label} por mês, sem taxa por pedido.",
+                    instagram,
+                ]
+            ),
+        ),
+        (
+            "google",
+            "Google",
+            "\n".join(
+                [
+                    "Título: Cardápio digital no WhatsApp",
+                    f"Descrição: Pedido chega no WhatsApp. 14 dias grátis, depois {price_label}/mês. Sem taxa por pedido.",
+                    google,
+                ]
+            ),
+        ),
+        (
+            "whatsapp",
+            "Status e grupos da sua cidade",
+            "\n".join(
+                [
+                    f"Abri vaga de teste do cardápio digital. 14 dias grátis, depois {price_label}/mês.",
+                    "O pedido cai no seu WhatsApp. Sem comissão em cima da comida.",
+                    whatsapp,
+                ]
+            ),
+        ),
+        (
+            "panfleto",
+            "Panfleto com QR",
+            "\n".join(
+                [
+                    "Imprima o QR desta página e deixe no balcão de quem já vende pelo WhatsApp.",
+                    "A pessoa aponta a câmera, abre o teste e monta o cardápio sozinha.",
+                    panfleto,
+                ]
+            ),
+        ),
+    )
 
 
 def validate_slug(slug: str) -> str:

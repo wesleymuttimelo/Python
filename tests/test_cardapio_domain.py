@@ -34,6 +34,17 @@ def sample_restaurant(**overrides) -> Restaurant:
     return Restaurant(**data)
 
 
+def test_source_from_ads_is_a_safe_label():
+    from cardapio.domain import ad_copies, normalize_source
+
+    assert normalize_source("Instagram") == "instagram"
+    assert normalize_source("<script>") == "script"
+    assert normalize_source("") == "direto"
+    text = ad_copies("R$ 39,00", "https://cardapio.exemplo")[0][2]
+    assert "https://cardapio.exemplo/?utm_source=instagram" in text
+    assert "garantid" not in text.lower()
+
+
 def test_slugify_strips_accents_and_spaces():
     assert slugify("Açaí do Zé") == "acai-do-ze"
 

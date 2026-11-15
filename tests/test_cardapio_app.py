@@ -204,13 +204,59 @@ def test_lead_form_reaches_the_dashboard(client):
             "whatsapp": "11955554444",
             "business_name": "Doces da Marina",
             "city": "Osasco",
+            "category": "Doces",
+            "source": "instagram",
         },
         follow_redirects=False,
     )
     assert response.status_code == 303
+    assert response.headers["location"].startswith("/loja/")
+    editor = client.get(response.headers["location"])
+    assert "já está no ar" in editor.text
     client.post("/admin/login", data={"token": "test-admin-token"})
     dashboard = client.get("/admin")
     assert "Doces da Marina" in dashboard.text
+    assert "instagram" in dashboard.text
+
+
+def test_ad_signup_publishes_an_item_and_tracks_the_source(client):
+    landing = client.get("/?utm_source=instagram")
+    assert 'name="source" value="instagram"' in landing.text
+    poisoned = client.get("/?utm_source=<script>")
+    assert "<script>" not in poisoned.text
+
+    created = client.post(
+        "/interessados",
+        data={
+            "name": "Lia",
+            "whatsapp": "11944443333",
+            "business_name": "Marmitas da Lia",
+            "city": "Santos",
+            "category": "Marmitas",
+            "source": "instagram",
+        },
+        follow_redirects=False,
+    )
+    editor_path = created.headers["location"]
+    editor = client.get(editor_path)
+    category_id = editor.text.split('name="category_id" value="', 1)[1].split('"', 1)[0]
+    published = client.post(
+        f"{editor_path}/itens",
+        data={"category_id": category_id, "name": "Frango", "description": "", "price": "22,00"},
+        follow_redirects=False,
+    )
+    assert published.status_code == 303
+    public = client.get("/r/marmitas-da-lia")
+    assert "Frango" in public.text
+
+    assert client.get("/admin/divulgar", follow_redirects=False).status_code == 303
+    client.post("/admin/login", data={"token": "test-admin-token"}, follow_redirects=False)
+    ads = client.get("/admin/divulgar")
+    assert ads.status_code == 200
+    assert "http://testserver/?utm_source=instagram" in ads.text
+    assert "Cadastros por este anúncio: 1" in ads.text
+    stranger = client.get("/loja/nao-existe")
+    assert stranger.status_code == 404
 
 
 def test_qr_svg_and_print_page(client):

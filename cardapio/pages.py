@@ -102,7 +102,7 @@ def page(title: str, body: str, *, noindex: bool = False) -> str:
 </html>"""
 
 
-def landing_page(price_label: str, *, error: str | None = None) -> str:
+def landing_page(price_label: str, *, error: str | None = None, source: str = "direto") -> str:
     error_html = f'<p class="error">{_e(error)}</p>' if error else ""
     body = f"""
     <header class="top">
@@ -124,15 +124,17 @@ def landing_page(price_label: str, *, error: str | None = None) -> str:
       <article class="card"><h2>3. Recebe</h2><p>O pedido abre uma conversa pronta no WhatsApp da loja. A comida é paga direto com ela.</p></article>
     </section>
     <section class="card" id="testar" style="margin-top:22px">
-      <h2>Quero testar 14 dias</h2>
-      <p class="muted">Sem cartão. Se não pagar depois do teste, o cardápio pausa sozinho.</p>
+      <h2>Abrir meu cardápio agora</h2>
+      <p class="muted">O teste de 14 dias fica pronto nesta página. Sem cartão. Se não pagar depois, o cardápio pausa sozinho.</p>
       {error_html}
       <form method="post" action="/interessados">
+        <input type="hidden" name="source" value="{_e(source)}">
         <label>Seu nome<input name="name" required maxlength="80"></label>
         <label>WhatsApp<input name="whatsapp" required inputmode="tel" placeholder="11999998888"></label>
         <label>Nome do negócio<input name="business_name" required maxlength="80"></label>
         <label>Cidade<input name="city" required maxlength="60"></label>
-        <button type="submit">Pedir o teste</button>
+        <label>Ramo<input name="category" required maxlength="40" placeholder="Marmitas"></label>
+        <button type="submit">Criar cardápio grátis</button>
       </form>
     </section>
     """
@@ -176,6 +178,7 @@ def dashboard_page(data: dict, price_label: str, *, error: str | None = None) ->
             f"<td><a href=\"/admin/restaurantes/{restaurant.id}\">{_e(restaurant.name)}</a>"
             f"<div class=\"muted\">/{_e(restaurant.slug)}</div></td>"
             f"<td>{_e(restaurant.plan_status)}</td>"
+            f"<td>{_e(restaurant.source)}</td>"
             f"<td>{_e(format_brl(restaurant.monthly_price_cents))}</td>"
             "</tr>"
         )
@@ -185,7 +188,7 @@ def dashboard_page(data: dict, price_label: str, *, error: str | None = None) ->
     ) or "<li>Nenhuma cobrança nesta janela.</li>"
     leads = "".join(
         "<li>"
-        f"{_e(lead.business_name)} — {_e(lead.name)} — {_e(lead.whatsapp)} — {_e(lead.city)}"
+        f"{_e(lead.business_name)} — {_e(lead.name)} — {_e(lead.whatsapp)} — {_e(lead.city)} — {_e(lead.source)}"
         "</li>"
         for lead in data["leads"]
     ) or "<li>Nenhum interesse ainda.</li>"
@@ -214,7 +217,7 @@ def dashboard_page(data: dict, price_label: str, *, error: str | None = None) ->
     </section>
     <h2>Lojas</h2>
     <table>
-      <thead><tr><th>Nome</th><th>Plano</th><th>Mensalidade</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Plano</th><th>Origem</th><th>Mensalidade</th></tr></thead>
       <tbody>{''.join(rows)}</tbody>
     </table>
     <h2>Nova loja</h2>
@@ -291,10 +294,18 @@ def restaurant_admin_page(
             "</tr>"
         )
     pix_note = "" if pix_ready else "<p class=\"error\">Configure CARDAPIO_PIX_KEY para a mensagem de cobrança sair completa.</p>"
+    private_link = ""
+    if restaurant.manage_token:
+        private_link = (
+            f'<p>Link privado da loja: <a href="/loja/{_e(restaurant.manage_token)}">'
+            "abrir o editor dela</a></p>"
+        )
     body = f"""
     {_admin_header()}
     <p class="eyebrow">{_e(restaurant.city)} · {_e(restaurant.category)} · {_e(status)}</p>
     <h1>{_e(restaurant.name)}</h1>
+    <p class="muted">Origem do anúncio: {_e(restaurant.source)}</p>
+    {private_link}
     <p class="actions">
       <a class="button" href="{_e(menu_url)}">Abrir cardápio</a>
       <a class="button secondary" href="/r/{_e(restaurant.slug)}/imprimir">Imprimir QR</a>
@@ -433,6 +444,7 @@ def _admin_header() -> str:
     <header class="top">
       <a class="brand" href="/admin">Cardápio Pix</a>
       <nav class="nav">
+        <a href="/admin/divulgar">Divulgar</a>
         <a href="/">Página de venda</a>
         <form method="post" action="/admin/sair"><button class="secondary" type="submit">Sair</button></form>
       </nav>
@@ -442,3 +454,74 @@ def _admin_header() -> str:
 
 def menu_url_for(base_url: str, restaurant: Restaurant) -> str:
     return public_menu_url(base_url, restaurant.slug)
+
+
+def loja_page(
+    restaurant: Restaurant,
+    groups: list[tuple[Category, list[Item]]],
+    *,
+    menu_url: str,
+    price_label: str,
+    error: str | None = None,
+) -> str:
+    error_html = f'<p class="error">{_e(error)}</p>' if error else ""
+    category_id = groups[0][0].id if groups else ""
+    blocks = []
+    for category, items in groups:
+        rows = []
+        for item in items:
+            rows.append(
+                "<li>"
+                f"{_e(item.name)} — {_e(format_brl(item.price_cents))}"
+                f"<form method=\"post\" action=\"/loja/{_e(restaurant.manage_token)}/itens/{item.id}/disponibilidade\">"
+                "<button class=\"secondary\" type=\"submit\">Esgotar ou voltar</button></form>"
+                "</li>"
+            )
+        blocks.append(f"<h2>{_e(category.name)}</h2><ul>{''.join(rows) or '<li>Nenhum item ainda.</li>'}</ul>")
+    body = f"""
+    <header class="top"><a class="brand" href="/r/{_e(restaurant.slug)}">{_e(restaurant.name)}</a></header>
+    <p class="eyebrow">Teste até {_e(restaurant.trial_ends_on.isoformat())}</p>
+    <h1>Seu cardápio já está no ar</h1>
+    <p>Guarde esta página. Ela é o editor só da sua loja. Não publique este endereço; publique o cardápio.</p>
+    <p class="actions">
+      <a class="button" href="{_e(menu_url)}">Ver cardápio</a>
+      <a class="button secondary" href="/r/{_e(restaurant.slug)}/imprimir">Imprimir QR</a>
+    </p>
+    {error_html}
+    {''.join(blocks)}
+    <form class="card" method="post" action="/loja/{_e(restaurant.manage_token)}/itens">
+      <input type="hidden" name="category_id" value="{category_id}">
+      <h2>Adicionar item</h2>
+      <label>Nome<input name="name" required></label>
+      <label>Descrição<textarea name="description" maxlength="200"></textarea></label>
+      <label>Preço<input name="price" required placeholder="22,00"></label>
+      <button type="submit">Publicar item</button>
+    </form>
+    <p class="muted">Depois do teste, a mensalidade é { _e(price_label) } por Pix. O pagamento da comida continua direto com você.</p>
+    """
+    return page(f"Editor · {restaurant.name}", body, noindex=True)
+
+
+def ads_page(copies: tuple[tuple[str, str, str], ...], counts: dict[str, int], price_label: str) -> str:
+    blocks = []
+    for source, title, text in copies:
+        total = counts.get(source, 0)
+        blocks.append(
+            "<section class=\"card\">"
+            f"<h2>{_e(title)}</h2>"
+            f"<p class=\"muted\">Cadastros por este anúncio: {total}</p>"
+            f"<textarea readonly rows=\"6\">{_e(text)}</textarea>"
+            "</section>"
+        )
+    body = f"""
+    {_admin_header()}
+    <h1>Divulgar</h1>
+    <p>O anúncio não manda mensagem para ninguém. A pessoa clica, abre a página e o cardápio de teste nasce na hora. Comece com pouco, na sua cidade, e olhe de onde vieram os cadastros.</p>
+    <section class="card">
+      <h2>Quanto anunciar</h2>
+      <p>Um teste honesto é cerca de R$ 15 por dia, por uma semana, só na sua cidade. Se um cadastro custar mais que a mensalidade de { _e(price_label) }, pause o anúncio e use o panfleto.</p>
+      <p class="muted">Não compre lista de telefone e não dispare WhatsApp para quem não pediu. Isso quebra a regra do WhatsApp e a LGPD.</p>
+    </section>
+    {''.join(blocks)}
+    """
+    return page("Divulgar", body, noindex=True)

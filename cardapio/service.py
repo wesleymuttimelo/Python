@@ -1,3 +1,4 @@
+import secrets
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
@@ -21,6 +22,7 @@ from cardapio.domain import (
     extend_paid_until,
     menu_is_open,
     needs_billing,
+    normalize_source,
     normalize_whatsapp,
     parse_price_to_cents,
     public_menu_url,
@@ -94,6 +96,7 @@ class CardapioService:
         category: str,
         slug: str = "",
         monthly_price: str = "",
+        source: str = "direto",
     ) -> Restaurant:
         clean_name = clean_text(
             name,
@@ -133,9 +136,62 @@ class CardapioService:
                 monthly_price_cents=price_cents,
                 is_demo=False,
                 created_on=today,
+                source=normalize_source(source),
             )
         except sqlite3.IntegrityError as exc:
             raise CardapioError("Esse link já está em uso.") from exc
+
+    def start_self_serve(
+        self,
+        *,
+        owner_name: str,
+        business_name: str,
+        whatsapp: str,
+        city: str,
+        category: str,
+        source: str,
+    ) -> Restaurant:
+        chosen_source = normalize_source(source)
+        base_slug = slugify(business_name)
+        if base_slug == "demo":
+            base_slug = "cardapio"
+        restaurant = self.create_restaurant(
+            name=business_name,
+            whatsapp=whatsapp,
+            city=city,
+            category=category,
+            slug=self._available_slug(base_slug),
+            source=chosen_source,
+        )
+        token = secrets.token_urlsafe(18)
+        self.repository.set_manage_token(restaurant.id, token)
+        self.repository.insert_category(restaurant.id, "Cardápio")
+        self.create_lead(
+            name=owner_name,
+            whatsapp=whatsapp,
+            business_name=business_name,
+            city=city,
+            source=chosen_source,
+        )
+        created = self._require_restaurant(restaurant.id)
+        return created
+
+    def _available_slug(self, base: str) -> str:
+        candidate = base
+        for number in range(2, 30):
+            if self.repository.get_restaurant_by_slug(candidate) is None:
+                return candidate
+            suffix = f"-{number}"
+            candidate = f"{base[:40 - len(suffix)]}{suffix}"
+        raise CardapioError("Não foi possível criar o link. Tente outro nome.")
+
+    def restaurant_by_token(self, token: str) -> Restaurant:
+        if not token:
+            raise NotFoundError("Link da loja não encontrado.")
+        restaurant = self.repository.get_restaurant_by_token(token)
+        if restaurant is None:
+            raise NotFoundError("Link da loja não encontrado.")
+        return restaurant
 
     def add_category(self, restaurant_id: int, name: str) -> Category:
         self._require_restaurant(restaurant_id)
@@ -290,6 +346,7 @@ class CardapioService:
         whatsapp: str,
         business_name: str,
         city: str,
+        source: str = "direto",
     ) -> Lead:
         return self.repository.insert_lead(
             name=clean_text(
@@ -312,6 +369,7 @@ class CardapioService:
                 too_long="A cidade é longa demais.",
             ),
             created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            source=normalize_source(source),
         )
 
     def delete_order(self, order_id: int) -> int:

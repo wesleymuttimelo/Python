@@ -18,6 +18,8 @@ SQLite em `CARDAPIO_DB_PATH` (padrão `data/cardapio.sqlite`).
 | monthly_price_cents | integer | |
 | is_demo | integer | 1 só na loja `demo` |
 | created_on | date | |
+| source | text | origem do anúncio, por exemplo `instagram` |
+| manage_token | text nulo | segredo do editor privado `/loja/{token}` |
 
 ## categories
 
@@ -37,4 +39,4 @@ SQLite em `CARDAPIO_DB_PATH` (padrão `data/cardapio.sqlite`).
 
 `id`, `name`, `whatsapp`, `business_name`, `city`, `created_at`.
 
-Interesse vindo da página inicial. Não é uma loja ainda.
+Interesse vindo da página inicial. `source` guarda o `utm_source` do anúncio.

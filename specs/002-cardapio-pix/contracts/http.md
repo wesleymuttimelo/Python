@@ -9,7 +9,10 @@ Não divide porta nem rotas com a API de filmes.
 | --- | --- | --- |
 | GET | `/health` | `200 {"status":"ok","service":"cardapio-pix"}` |
 | GET | `/` | HTML da oferta |
-| POST | `/interessados` | `303 /obrigado` ou `400` HTML |
+| POST | `/interessados` | `303 /loja/{token}` cria o teste na hora, ou `400` HTML |
+| GET | `/loja/{token}` | editor privado daquela loja |
+| POST | `/loja/{token}/itens` | publica um item no cardápio dela |
+| GET | `/?utm_source=instagram` | a mesma oferta, com a origem guardada no cadastro |
 | GET | `/r/{slug}` | HTML do cardápio, ou pausa se estiver fechado |
 | POST | `/r/{slug}/pedidos` | `303` para o pedido criado, `400` ou `403` HTML |
 | GET | `/r/{slug}/pedidos/{id}` | HTML com link `https://wa.me/` |
@@ -48,6 +51,7 @@ Cookie `cardapio_admin` com o valor de `CARDAPIO_ADMIN_TOKEN`. Sem cookie, as ro
 | POST | `/admin/login` | grava o cookie se o token coincidir |
 | POST | `/admin/sair` | apaga o cookie |
 | GET | `/admin` | painel |
+| GET | `/admin/divulgar` | textos e links de anúncio, com a contagem por origem |
 | POST | `/admin/restaurantes` | cria loja em trial |
 | POST | `/admin/restaurantes/{id}/categorias` | nova categoria |
 | POST | `/admin/restaurantes/{id}/itens` | novo item |

@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS restaurants (
     paid_until TEXT,
     monthly_price_cents INTEGER NOT NULL,
     is_demo INTEGER NOT NULL DEFAULT 0,
-    created_on TEXT NOT NULL
+    created_on TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'direto',
+    manage_token TEXT
 );
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -66,9 +68,16 @@ CREATE TABLE IF NOT EXISTS leads (
     whatsapp TEXT NOT NULL,
     business_name TEXT NOT NULL,
     city TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'direto'
 );
 """
+
+
+def _add_column(connection: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def _date_or_none(value: str | None) -> date | None:
@@ -91,6 +100,8 @@ def restaurant_from_row(row: sqlite3.Row) -> Restaurant:
         monthly_price_cents=row["monthly_price_cents"],
         is_demo=bool(row["is_demo"]),
         created_on=date.fromisoformat(row["created_on"]),
+        source=row["source"] or "direto",
+        manage_token=row["manage_token"],
     )
 
 
@@ -148,6 +159,7 @@ def lead_from_row(row: sqlite3.Row) -> Lead:
         business_name=row["business_name"],
         city=row["city"],
         created_at=row["created_at"],
+        source=row["source"] or "direto",
     )
 
 
@@ -176,6 +188,12 @@ class Repository:
         try:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(SCHEMA)
+            _add_column(connection, "restaurants", "source", "TEXT NOT NULL DEFAULT 'direto'")
+            _add_column(connection, "restaurants", "manage_token", "TEXT")
+            _add_column(connection, "leads", "source", "TEXT NOT NULL DEFAULT 'direto'")
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS restaurants_manage_token ON restaurants(manage_token)"
+            )
         finally:
             connection.close()
 
@@ -202,6 +220,21 @@ class Repository:
             ).fetchone()
             return restaurant_from_row(row) if row else None
 
+    def get_restaurant_by_token(self, token: str) -> Restaurant | None:
+        with self.session() as connection:
+            row = connection.execute(
+                "SELECT * FROM restaurants WHERE manage_token = ?",
+                (token,),
+            ).fetchone()
+            return restaurant_from_row(row) if row else None
+
+    def set_manage_token(self, restaurant_id: int, token: str) -> None:
+        with self.session() as connection:
+            connection.execute(
+                "UPDATE restaurants SET manage_token = ? WHERE id = ?",
+                (token, restaurant_id),
+            )
+
     def insert_restaurant(
         self,
         *,
@@ -216,14 +249,17 @@ class Repository:
         monthly_price_cents: int,
         is_demo: bool,
         created_on: date,
+        source: str = "direto",
+        manage_token: str | None = None,
     ) -> Restaurant:
         with self.session() as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO restaurants (
                     slug, name, whatsapp, city, category, plan_status,
-                    trial_ends_on, paid_until, monthly_price_cents, is_demo, created_on
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    trial_ends_on, paid_until, monthly_price_cents, is_demo, created_on,
+                    source, manage_token
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     slug,
@@ -237,6 +273,8 @@ class Repository:
                     monthly_price_cents,
                     int(is_demo),
                     created_on.isoformat(),
+                    source,
+                    manage_token,
                 ),
             )
             row = connection.execute(
@@ -477,14 +515,15 @@ class Repository:
         business_name: str,
         city: str,
         created_at: str,
+        source: str = "direto",
     ) -> Lead:
         with self.session() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO leads (name, whatsapp, business_name, city, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO leads (name, whatsapp, business_name, city, created_at, source)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (name, whatsapp, business_name, city, created_at),
+                (name, whatsapp, business_name, city, created_at, source),
             )
             row = connection.execute(
                 "SELECT * FROM leads WHERE id = ?",

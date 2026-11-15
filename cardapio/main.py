@@ -7,12 +7,14 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from cardapio.config import CardapioSettings
-from cardapio.domain import CardapioError, format_brl, public_menu_url
+from cardapio.domain import CardapioError, ad_copies, format_brl, normalize_source, public_menu_url
 from cardapio.pages import (
+    ads_page,
     dashboard_page,
     error_page,
     landing_page,
     login_page,
+    loja_page,
     order_page,
     print_page,
     public_menu_page,
@@ -60,22 +62,76 @@ def create_app(settings: CardapioSettings | None = None) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
         price = format_brl(settings_of(request).default_price_cents)
-        return HTMLResponse(landing_page(price))
+        source = normalize_source(request.query_params.get("utm_source"))
+        return HTMLResponse(landing_page(price, source=source))
 
     @app.post("/interessados", response_class=HTMLResponse)
     async def create_interest(request: Request) -> Response:
         form = await read_form(request)
+        source = normalize_source(form.get("source"))
         try:
-            service_of(request).create_lead(
-                name=form.get("name", ""),
-                whatsapp=form.get("whatsapp", ""),
+            restaurant = service_of(request).start_self_serve(
+                owner_name=form.get("name", ""),
                 business_name=form.get("business_name", ""),
+                whatsapp=form.get("whatsapp", ""),
                 city=form.get("city", ""),
+                category=form.get("category", ""),
+                source=source,
             )
         except CardapioError as exc:
             price = format_brl(settings_of(request).default_price_cents)
-            return HTMLResponse(landing_page(price, error=exc.message), status_code=exc.status_code)
-        return RedirectResponse("/obrigado", status_code=303)
+            return HTMLResponse(
+                landing_page(price, error=exc.message, source=source),
+                status_code=exc.status_code,
+            )
+        return RedirectResponse(f"/loja/{restaurant.manage_token}", status_code=303)
+
+    @app.get("/loja/{token}", response_class=HTMLResponse)
+    def store_home(token: str, request: Request) -> HTMLResponse:
+        return _store_page(request, token)
+
+    @app.post("/loja/{token}/itens", response_class=HTMLResponse)
+    async def store_add_item(token: str, request: Request) -> Response:
+        form = await read_form(request)
+        try:
+            restaurant = service_of(request).restaurant_by_token(token)
+            service_of(request).add_item(
+                restaurant.id,
+                category_id=int(form.get("category_id") or "0"),
+                name=form.get("name", ""),
+                description=form.get("description", ""),
+                price=form.get("price", ""),
+            )
+        except CardapioError as exc:
+            return _store_page(request, token, error=exc.message, status_code=exc.status_code)
+        except ValueError:
+            return _store_page(request, token, error="Categoria inválida.", status_code=400)
+        return RedirectResponse(f"/loja/{token}", status_code=303)
+
+    @app.post("/loja/{token}/itens/{item_id}/disponibilidade")
+    def store_toggle_item(token: str, item_id: int, request: Request) -> Response:
+        try:
+            restaurant = service_of(request).restaurant_by_token(token)
+        except CardapioError as exc:
+            return HTMLResponse(error_page("Loja", exc.message), status_code=exc.status_code)
+        item = service_of(request).repository.get_item(item_id)
+        if item is None or item.restaurant_id != restaurant.id:
+            return HTMLResponse(error_page("Item", "Item não encontrado."), status_code=404)
+        service_of(request).toggle_item(item_id)
+        return RedirectResponse(f"/loja/{token}", status_code=303)
+
+    @app.get("/admin/divulgar", response_class=HTMLResponse)
+    def ads(request: Request) -> Response:
+        if not is_admin(request):
+            return deny_admin()
+        settings = settings_of(request)
+        price = format_brl(settings.default_price_cents)
+        counts: dict[str, int] = {}
+        for restaurant in service_of(request).repository.list_restaurants():
+            if restaurant.is_demo:
+                continue
+            counts[restaurant.source] = counts.get(restaurant.source, 0) + 1
+        return HTMLResponse(ads_page(ad_copies(price, settings.public_base), counts, price))
 
     @app.get("/obrigado", response_class=HTMLResponse)
     def thanks() -> HTMLResponse:
@@ -313,6 +369,27 @@ def create_app(settings: CardapioSettings | None = None) -> FastAPI:
         except CardapioError as exc:
             return _render_restaurant(request, restaurant_id, error=exc.message, status_code=exc.status_code)
         return RedirectResponse(f"/admin/restaurantes/{restaurant_id}", status_code=303)
+
+    def _store_page(
+        request: Request,
+        token: str,
+        *,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> HTMLResponse:
+        try:
+            restaurant = service_of(request).restaurant_by_token(token)
+        except CardapioError as exc:
+            return HTMLResponse(error_page("Loja", exc.message), status_code=exc.status_code)
+        settings = settings_of(request)
+        page = loja_page(
+            restaurant,
+            service_of(request)._groups(restaurant.id),
+            menu_url=public_menu_url(settings.public_base, restaurant.slug),
+            price_label=format_brl(settings.default_price_cents),
+            error=error,
+        )
+        return HTMLResponse(page, status_code=status_code)
 
     def _render_restaurant(
         request: Request,

@@ -40,3 +40,5 @@ um único processo e cobra mensalidade de pequenos negócios de comida.
 - Confirmar Pix aumenta a receita recorrente e empurra `paid_until`.
 - Texto digitado pela loja é escapado no HTML.
 - `GET /health` responde `ok` sem depender da API de filmes.
+- Um anúncio com `utm_source` abre um cardápio de teste na hora, sem espera humana, e o painel conta de qual anúncio veio.
+- O editor da loja só abre com o link privado. Ele não alcança outra loja nem confirma Pix.
